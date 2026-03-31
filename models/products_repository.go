@@ -6,11 +6,11 @@ import (
 
 // ProductsRepository handles database operations for products.
 type ProductsRepository struct {
-	db *gorm.DB
+	db DBInterface
 }
 
 // NewProductsRepository creates and returns a new ProductsRepository instance.
-func NewProductsRepository(db *gorm.DB) *ProductsRepository {
+func NewProductsRepository(db DBInterface) *ProductsRepository {
 	return &ProductsRepository{
 		db: db,
 	}
@@ -20,7 +20,7 @@ func NewProductsRepository(db *gorm.DB) *ProductsRepository {
 // Returns a slice of all Product records and an error if the query fails.
 func (r *ProductsRepository) GetAllProducts() ([]Product, error) {
 	var products []Product
-	if err := r.db.Preload("Variants").Find(&products).Error; err != nil {
+	if err := r.db.Preload("Variants").Find(&products).GetError(); err != nil {
 		return nil, err
 	}
 	return products, nil
@@ -49,7 +49,7 @@ func (r *ProductsRepository) GetProducts(filter ProductFilter) ([]Product, int64
 	}
 
 	// Count total matching records
-	if err := query.Model(&Product{}).Count(&total).Error; err != nil {
+	if err := query.Model(&Product{}).Count(&total).GetError(); err != nil {
 		return nil, 0, err
 	}
 
@@ -57,7 +57,7 @@ func (r *ProductsRepository) GetProducts(filter ProductFilter) ([]Product, int64
 	if err := query.Offset(filter.Offset).Limit(filter.Limit).
 		Preload("Category").
 		Preload("Variants").
-		Find(&products).Error; err != nil {
+		Find(&products).GetError(); err != nil {
 		return nil, 0, err
 	}
 
@@ -72,7 +72,7 @@ func (r *ProductsRepository) GetProductByCode(code string) (*Product, error) {
 	if err := r.db.Where("code = ?", code).
 		Preload("Category").
 		Preload("Variants").
-		First(&product).Error; err != nil {
+		First(&product).GetError(); err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, err
 		}

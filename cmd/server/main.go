@@ -36,10 +36,11 @@ func main() {
 	defer close()
 
 	// Initialize handlers
-	prodRepo := models.NewProductsRepository(db)
+	dbAdapter := models.NewGormDBAdapter(db)
+	prodRepo := models.NewProductsRepository(dbAdapter)
 	cat := catalog.NewCatalogHandler(prodRepo)
 
-	catRepo := models.NewCategoriesRepository(db)
+	catRepo := models.NewCategoriesRepository(dbAdapter)
 	catHandler := categories.NewCategoriesHandler(catRepo)
 
 	// Set up routing
