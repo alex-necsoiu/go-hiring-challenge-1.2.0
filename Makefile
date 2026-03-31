@@ -56,7 +56,7 @@ TEST_COVERAGE_HTML := coverage.html
 	run run-seed \
 	fmt fmt-check \
 	vet lint \
-	test test-unit test-race test-coverage \
+	test test-unit test-integration test-all test-race test-coverage \
 	docker-up docker-down docker-logs \
 	db-up db-down db-reset \
 	tidy clean \
@@ -90,6 +90,8 @@ help:
 	@echo "┌─ Testing ──────────────────────────────────────────────────────────┐"
 	@echo "│ make test               Run all tests with coverage                │"
 	@echo "│ make test-unit          Run unit tests (no docker required)        │"
+	@echo "│ make test-integration   Run integration tests (requires Docker)    │"
+	@echo "│ make test-all           Run all tests (starts Docker if needed)    │"
 	@echo "│ make test-race          Run tests with race detector               │"
 	@echo "│ make test-coverage      Generate coverage report (fails <47%)      │"
 	@echo "└────────────────────────────────────────────────────────────────────┘"
@@ -173,6 +175,15 @@ test-unit:
 	@echo "🧪 Running unit tests..."
 	@$(GO) test -v -short -count=1 ./...
 	@echo "✅ Unit tests passed!"
+
+test-integration:
+	@echo "🧪 Running integration tests (requires running Docker)..."
+	@echo "   Note: Ensure docker compose is running with 'make docker-up'"
+	@$(GO) test -v -count=1 -tags integration ./app
+	@echo "✅ Integration tests passed!"
+
+test-all: test-unit docker-up test-integration
+	@echo "✅ All tests passed!"
 
 test-race:
 	@echo "🧪 Running tests with race detector..."
