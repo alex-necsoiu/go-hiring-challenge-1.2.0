@@ -1,7 +1,6 @@
 package models
 
 import (
-	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
@@ -31,22 +30,22 @@ func (r *ProductsRepository) GetAllProducts() ([]Product, error) {
 // It returns the matching products, the total count of all matching records (for pagination),
 // and an error if the database query fails.
 // Filters applied:
-//   - categoryCode: if provided, filters to products in that category
-//   - maxPrice: if non-zero, filters to products with price less than maxPrice
+//   - CategoryCode: if provided, filters to products in that category
+//   - MaxPrice: if non-zero, filters to products with price less than MaxPrice
 // Results are preloaded with Category and Variants relationships.
-func (r *ProductsRepository) GetProducts(offset, limit int, categoryCode string, maxPrice decimal.Decimal) ([]Product, int64, error) {
+func (r *ProductsRepository) GetProducts(filter ProductFilter) ([]Product, int64, error) {
 	var products []Product
 	var total int64
 
 	query := r.db
 
 	// Apply filters
-	if categoryCode != "" {
+	if filter.CategoryCode != "" {
 		query = query.Joins("JOIN categories ON categories.id = products.category_id").
-			Where("categories.code = ?", categoryCode)
+			Where("categories.code = ?", filter.CategoryCode)
 	}
-	if !maxPrice.IsZero() {
-		query = query.Where("products.price < ?", maxPrice)
+	if !filter.MaxPrice.IsZero() {
+		query = query.Where("products.price < ?", filter.MaxPrice)
 	}
 
 	// Count total matching records
@@ -55,7 +54,7 @@ func (r *ProductsRepository) GetProducts(offset, limit int, categoryCode string,
 	}
 
 	// Apply pagination and preloads
-	if err := query.Offset(offset).Limit(limit).
+	if err := query.Offset(filter.Offset).Limit(filter.Limit).
 		Preload("Category").
 		Preload("Variants").
 		Find(&products).Error; err != nil {
