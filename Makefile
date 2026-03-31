@@ -179,7 +179,7 @@ test-unit:
 test-integration:
 	@echo "🧪 Running integration tests (requires running Docker)..."
 	@echo "   Note: Ensure docker compose is running with 'make docker-up'"
-	@$(GO) test -v -count=1 -tags integration ./app
+	@GOTOOLCHAIN=auto $(GO) test -v -count=1 -tags integration ./app
 	@echo "✅ Integration tests passed!"
 
 test-all: test-unit docker-up test-integration

@@ -122,7 +122,7 @@ func TestHandleCreate(t *testing.T) {
 		checkCategoryData func(t *testing.T) // for checking what was passed to mock
 	}{
 		{
-			name: "successful creation - returns 200",
+			name: "successful creation - returns 201",
 			requestBody: map[string]string{
 				"code": "new-category",
 				"name": "New Category",
@@ -131,7 +131,7 @@ func TestHandleCreate(t *testing.T) {
 				category.ID = 4
 				return nil
 			},
-			expectedStatus: http.StatusOK,
+			expectedStatus: http.StatusCreated,
 			checkResponse: func(t *testing.T, body string) {
 				var resp CategoryResponse
 				err := json.Unmarshal([]byte(body), &resp)

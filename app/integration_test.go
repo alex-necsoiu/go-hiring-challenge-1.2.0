@@ -61,7 +61,10 @@ func SetupIntegrationTest(t *testing.T) *IntegrationTestSuite {
 		os.Getenv("POSTGRES_PORT"),
 	)
 
-	// Run migrations
+	// Drop existing tables to ensure clean state
+	cleanDatabase(t, db)
+
+	// Run migrations to create schema
 	runMigrations(t, db)
 
 	// Create repositories
@@ -90,29 +93,75 @@ func SetupIntegrationTest(t *testing.T) *IntegrationTestSuite {
 
 // TeardownIntegrationTest cleans up database resources
 func TeardownIntegrationTest(t *testing.T, suite *IntegrationTestSuite) {
-	truncateTables(t, suite.DB)
+	// Note: table cleanup happens at the START of the next test via cleanDatabase()
+	// This is more reliable than cleanup at the end
 	if err := suite.Close(); err != nil {
 		t.Errorf("Error closing database: %v", err)
 	}
 }
 
-// runMigrations executes all SQL migration files in order
+// runMigrations executes SQL migration files in order, skipping seed data files
 func runMigrations(t *testing.T, db *gorm.DB) {
 	dir := os.Getenv("POSTGRES_SQL_DIR")
+	
+	// If env var is set, try it first, but fall back if it doesn't exist
+	if dir != "" {
+		if _, err := os.Stat(dir); err == nil {
+			// Path exists, use it
+		} else {
+			// Path from env var doesn't exist, try candidates
+			dir = ""
+		}
+	}
+	
+	// If no valid dir yet, try candidates
 	if dir == "" {
-		dir = "./sql"
+		candidates := []string{
+			"./sql",
+			"../sql",
+			"sql",
+		}
+
+		for _, candidate := range candidates {
+			if _, err := os.Stat(candidate); err == nil {
+				dir = candidate
+				break
+			}
+		}
+
+		// If still not found, fail with helpful message
+		if dir == "" {
+			require.Fail(t, "reading migration directory failed", 
+				"sql directory not found; tried: ./sql, ../sql, sql, and env var POSTGRES_SQL_DIR")
+		}
 	}
 
 	files, err := os.ReadDir(dir)
 	require.NoError(t, err, "reading migration directory failed")
 
-	// Filter and sort .sql files
+	// Filter and sort .sql files, but SKIP seed data files for integration tests
 	var sqlFiles []os.DirEntry
+	skipPatterns := []string{
+		"003-product-data.sql",    // Skip seed products
+		"005-category-data.sql",   // Skip seed categories
+	}
+
 	for _, file := range files {
 		if !file.IsDir() && strings.HasSuffix(file.Name(), ".sql") {
-			sqlFiles = append(sqlFiles, file)
+			// Check if this is a seed data file to skip
+			skip := false
+			for _, pattern := range skipPatterns {
+				if file.Name() == pattern {
+					skip = true
+					break
+				}
+			}
+			if !skip {
+				sqlFiles = append(sqlFiles, file)
+			}
 		}
 	}
+
 	sort.Slice(sqlFiles, func(i, j int) bool {
 		return sqlFiles[i].Name() < sqlFiles[j].Name()
 	})
@@ -130,10 +179,25 @@ func runMigrations(t *testing.T, db *gorm.DB) {
 
 // truncateTables removes all data from tables while keeping schema
 func truncateTables(t *testing.T, db *gorm.DB) {
-	tables := []string{"products", "variants", "categories"}
+	// Drop all tables to ensure clean state (in reverse dependency order)
+	tables := []string{"product_variants", "products", "categories"}
 	for _, table := range tables {
-		if err := db.Exec(fmt.Sprintf("TRUNCATE TABLE %s CASCADE", table)).Error; err != nil {
-			t.Logf("Warning: truncating table %s failed: %v", table, err)
+		if err := db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s CASCADE", table)).Error; err != nil {
+			t.Logf("Warning: dropping table %s failed: %v", table, err)
+		}
+	}
+	
+	// Recreate schema by running migrations
+	// This is done implicitly by runMigrations on next test run
+}
+
+// cleanDatabase drops all tables to ensure a clean state at the start of each test
+func cleanDatabase(t *testing.T, db *gorm.DB) {
+	tables := []string{"product_variants", "products", "categories"}
+	for _, table := range tables {
+		if err := db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s CASCADE", table)).Error; err != nil {
+			// It's OK if tables don't exist yet
+			t.Logf("Note: table %s did not exist: %v", table, err)
 		}
 	}
 }
@@ -383,11 +447,11 @@ func TestIntegration_CatalogEndpoint_ProductDetails(t *testing.T) {
 				var resp map[string]interface{}
 				require.NoError(t, json.Unmarshal([]byte(body), &resp))
 				data := resp["data"].(map[string]interface{})
-				product := data["product"].(map[string]interface{})
-				assert.Equal(t, "PROD001", product["code"])
-				assert.Equal(t, "T-Shirt", product["name"])
-				assert.Equal(t, "CLOTHING", product["category"].(map[string]interface{})["code"])
-				variants := product["variants"].([]interface{})
+				// Data IS the product, not nested under "product"
+				assert.Equal(t, "PROD001", data["code"])
+				assert.Equal(t, "T-Shirt", data["name"])
+				assert.Equal(t, "CLOTHING", data["category"].(map[string]interface{})["code"])
+				variants := data["variants"].([]interface{})
 				assert.True(t, len(variants) > 0)
 			},
 		},
@@ -399,9 +463,9 @@ func TestIntegration_CatalogEndpoint_ProductDetails(t *testing.T) {
 				var resp map[string]interface{}
 				require.NoError(t, json.Unmarshal([]byte(body), &resp))
 				data := resp["data"].(map[string]interface{})
-				product := data["product"].(map[string]interface{})
-				assert.Equal(t, "PROD003", product["code"])
-				assert.Equal(t, "Watch", product["name"])
+				// Data IS the product, not nested under "product"
+				assert.Equal(t, "PROD003", data["code"])
+				assert.Equal(t, "Watch", data["name"])
 			},
 		},
 		{

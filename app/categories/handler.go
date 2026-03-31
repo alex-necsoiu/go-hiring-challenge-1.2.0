@@ -127,5 +127,5 @@ func (h *CategoriesHandler) HandleCreate(w http.ResponseWriter, r *http.Request)
 		},
 	}
 
-	api.OKResponse(w, response)
+	api.CreatedResponse(w, response)
 }
