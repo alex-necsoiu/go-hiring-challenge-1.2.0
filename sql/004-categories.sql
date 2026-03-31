@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS categories (
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(64) UNIQUE NOT NULL,
+    name VARCHAR(256) NOT NULL
+);
+
+ALTER TABLE products
+    ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES categories(id);
