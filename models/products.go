@@ -5,10 +5,11 @@ import (
 )
 
 // Product represents a product in the catalog.
-// It includes a unique code and a price.
+// It includes a unique code, name, and price.
 type Product struct {
 	ID         uint            `gorm:"primaryKey"`
 	Code       string          `gorm:"uniqueIndex;not null"`
+	Name       string          `gorm:"not null"`
 	Price      decimal.Decimal `gorm:"type:decimal(10,2);not null"`
 	CategoryID uint            `gorm:"not null"`
 	Category   Category        `gorm:"foreignKey:CategoryID"`

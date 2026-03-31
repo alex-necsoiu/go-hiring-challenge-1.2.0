@@ -6,9 +6,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/mytheresa/go-hiring-challenge/models"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
-	"github.com/mytheresa/go-hiring-challenge/models"
 	"gorm.io/gorm"
 )
 

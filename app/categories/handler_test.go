@@ -8,8 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/mytheresa/go-hiring-challenge/models"
+	"github.com/stretchr/testify/assert"
 )
 
 // mockCategoryRepository is a test double implementing CategoryRepository interface

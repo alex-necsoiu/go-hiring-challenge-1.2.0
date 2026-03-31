@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/shopspring/decimal"
 	"github.com/mytheresa/go-hiring-challenge/app/api"
 	"github.com/mytheresa/go-hiring-challenge/models"
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
@@ -137,7 +137,7 @@ func (h *CatalogHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 	for i, p := range products {
 		productItems[i] = ProductItem{
 			Code:  p.Code,
-			Name:  "", // TODO: add Name field to Product model if needed
+			Name:  p.Name,
 			Price: p.Price.String(),
 			Category: CategoryItem{
 				Code: p.Category.Code,
@@ -194,7 +194,7 @@ func (h *CatalogHandler) HandleGetByCode(w http.ResponseWriter, r *http.Request)
 	response := ProductDetailResponse{
 		Data: ProductDetail{
 			Code:  product.Code,
-			Name:  "", // TODO: add Name field to Product model if needed
+			Name:  product.Name,
 			Price: product.Price.String(),
 			Category: CategoryItem{
 				Code: product.Category.Code,
