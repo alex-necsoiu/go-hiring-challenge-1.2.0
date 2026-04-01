@@ -32,6 +32,7 @@ func main() {
 		os.Getenv("POSTGRES_PASSWORD"),
 		os.Getenv("POSTGRES_DB"),
 		os.Getenv("POSTGRES_PORT"),
+		os.Getenv("POSTGRES_HOST"),
 	)
 	defer close()
 
@@ -52,13 +53,13 @@ func main() {
 
 	// Set up the HTTP server
 	srv := &http.Server{
-		Addr:    fmt.Sprintf("localhost:%s", os.Getenv("HTTP_PORT")),
+		Addr:    fmt.Sprintf(":%s", os.Getenv("HTTP_PORT")),
 		Handler: mux,
 	}
 
 	// Start the server
 	go func() {
-		log.Printf("Starting server on http://%s", srv.Addr)
+		log.Printf("Starting server on http://localhost%s", srv.Addr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server failed: %s", err)
 		}

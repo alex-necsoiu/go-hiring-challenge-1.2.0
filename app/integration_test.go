@@ -64,6 +64,7 @@ func SetupIntegrationTest(t *testing.T) *IntegrationTestSuite {
 		os.Getenv("POSTGRES_PASSWORD"),
 		os.Getenv("POSTGRES_DB"),
 		os.Getenv("POSTGRES_PORT"),
+		os.Getenv("POSTGRES_HOST"),
 	)
 
 	// Drop existing tables to ensure clean state

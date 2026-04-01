@@ -9,8 +9,20 @@ import (
 	"gorm.io/gorm"
 )
 
-func New(user, password, dbname, port string) (db *gorm.DB, close func() error) {
-	dsn := fmt.Sprintf("postgres://%s:%s@localhost:%s/%s?sslmode=disable", user, password, port, dbname)
+// New creates a new PostgreSQL database connection.
+// Parameters:
+//   - user: PostgreSQL username
+//   - password: PostgreSQL password
+//   - dbname: Database name
+//   - port: PostgreSQL port
+//   - host: PostgreSQL hostname (default: localhost)
+func New(user, password, dbname, port, host string) (db *gorm.DB, close func() error) {
+	// Default to localhost if host is empty
+	if host == "" {
+		host = "localhost"
+	}
+
+	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", user, password, host, port, dbname)
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
