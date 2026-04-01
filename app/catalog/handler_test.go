@@ -186,6 +186,22 @@ func TestHandleGet(t *testing.T) {
 			},
 		},
 		{
+			name:        "category filter with uppercase (case-insensitive)",
+			queryParams: "?offset=0&limit=10&category=CLOTHING",
+			mockFunc: func() ([]models.Product, int64, error) {
+				return []models.Product{}, 0, nil
+			},
+			expectedStatus: http.StatusOK,
+			checkResponse: func(t *testing.T, body string) {
+				var resp CatalogResponse
+				err := json.Unmarshal([]byte(body), &resp)
+				assert.NoError(t, err)
+			},
+			checkFilter: func(t *testing.T, filter models.ProductFilter) {
+				assert.Equal(t, "CLOTHING", filter.CategoryCode)
+			},
+		},
+		{
 			name:        "priceLessThan filter passed to repository",
 			queryParams: "?offset=0&limit=10&priceLessThan=15.00",
 			mockFunc: func() ([]models.Product, int64, error) {
@@ -241,6 +257,7 @@ func TestHandleGetByCode(t *testing.T) {
 			name: "happy path - returns 200 with product detail",
 			code: "PROD001",
 			mockFunc: func(code string) (*models.Product, error) {
+				price11_99 := decimal.NewFromFloat(11.99)
 				return &models.Product{
 					ID:   1,
 					Code: "PROD001",
@@ -256,13 +273,13 @@ func TestHandleGetByCode(t *testing.T) {
 							ID: 1,
 							Name: "Variant A",
 							SKU: "SKU001A",
-							Price: decimal.NewFromFloat(11.99),
+							Price: &price11_99,
 						},
 						{
 							ID: 2,
 							Name: "Variant B",
 							SKU: "SKU001B",
-							Price: decimal.Zero,
+							Price: nil,
 						},
 					},
 				}, nil
@@ -272,14 +289,14 @@ func TestHandleGetByCode(t *testing.T) {
 				var resp ProductDetailResponse
 				err := json.Unmarshal([]byte(body), &resp)
 				assert.NoError(t, err)
-				assert.Equal(t, "PROD001", resp.Data.Code)
-				assert.Equal(t, "10.99", resp.Data.Price)
-				assert.Equal(t, "clothing", resp.Data.Category.Code)
-				assert.Equal(t, 2, len(resp.Data.Variants))
-				// Variant with price should have that price
-				assert.Equal(t, "11.99", resp.Data.Variants[0].Price)
-				// Variant without price should inherit product price
-				assert.Equal(t, "10.99", resp.Data.Variants[1].Price)
+				assert.Equal(t, "PROD001", resp.Data.Product.Code)
+				assert.Equal(t, "10.99", resp.Data.Product.Price)
+				assert.Equal(t, "clothing", resp.Data.Product.Category.Code)
+				assert.Equal(t, 2, len(resp.Data.Product.Variants))
+				// Variant with explicit price should have that price
+				assert.Equal(t, "11.99", resp.Data.Product.Variants[0].Price)
+				// Variant with NULL price should inherit product price
+				assert.Equal(t, "10.99", resp.Data.Product.Variants[1].Price)
 			},
 		},
 		{

@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/shopspring/decimal"
@@ -420,24 +421,25 @@ type productsMockGormDB struct {
 	hasJoin          bool
 	hasWhere         bool
 	hasCodeWhere     bool
+	orderBy          string
 }
 
 func (m *productsMockGormDB) filterProducts() []Product {
 	results := m.products
 
-	// Apply category filter
+	// Apply category filter (case-insensitive)
 	if m.hasJoin && m.categoryFilter != "" {
 		filtered := []Product{}
 		for _, p := range results {
-			// First check if product has Category set with matching code
-			if p.Category.Code == m.categoryFilter {
+			// First check if product has Category set with matching code (case-insensitive)
+			if p.Category.Code != "" && equalsIgnoreCase(p.Category.Code, m.categoryFilter) {
 				filtered = append(filtered, p)
 				continue
 			}
 
-			// Otherwise, find category by ID in MockDB.categories
+			// Otherwise, find category by ID in MockDB.categories (case-insensitive)
 			for _, cat := range m.categories {
-				if cat.ID == p.CategoryID && cat.Code == m.categoryFilter {
+				if cat.ID == p.CategoryID && equalsIgnoreCase(cat.Code, m.categoryFilter) {
 					filtered = append(filtered, p)
 					break
 				}
@@ -458,7 +460,39 @@ func (m *productsMockGormDB) filterProducts() []Product {
 		results = filtered
 	}
 
+	// Apply ordering
+	if m.orderBy != "" {
+		if m.orderBy == "products.code ASC" {
+			// Sort by code in ascending order
+			for i := 0; i < len(results); i++ {
+				for j := i + 1; j < len(results); j++ {
+					if results[j].Code < results[i].Code {
+						results[i], results[j] = results[j], results[i]
+					}
+				}
+			}
+		}
+	}
+
 	return results
+}
+
+// equalsIgnoreCase performs case-insensitive string comparison
+func equalsIgnoreCase(a, b string) bool {
+	// Simple ASCII lowercase comparison (sufficient for category codes)
+	for i := 0; i < len(a) && i < len(b); i++ {
+		aChar, bChar := a[i], b[i]
+		if aChar >= 'A' && aChar <= 'Z' {
+			aChar = aChar + 32 // Convert to lowercase
+		}
+		if bChar >= 'A' && bChar <= 'Z' {
+			bChar = bChar + 32 // Convert to lowercase
+		}
+		if aChar != bChar {
+			return false
+		}
+	}
+	return len(a) == len(b)
 }
 
 func (m *productsMockGormDB) Preload(column string, conditions ...interface{}) DBInterface {
@@ -502,6 +536,7 @@ func (m *productsMockGormDB) Joins(query string, args ...interface{}) DBInterfac
 		hasJoin:        true,
 		hasWhere:       m.hasWhere,
 		hasCodeWhere:   m.hasCodeWhere,
+		orderBy:        m.orderBy,
 	}
 	return newMock
 }
@@ -517,12 +552,14 @@ func (m *productsMockGormDB) Where(query interface{}, args ...interface{}) DBInt
 		hasJoin:        m.hasJoin,
 		hasWhere:       true,
 		hasCodeWhere:   m.hasCodeWhere,
+		orderBy:        m.orderBy,
 	}
 
 	// Extract filter values from args
 	if len(args) > 0 {
 		if queryStr, ok := query.(string); ok {
-			if queryStr == "categories.code = ?" {
+			// Handle both case-sensitive and case-insensitive category filters
+			if queryStr == "categories.code = ?" || queryStr == "LOWER(categories.code) = LOWER(?)" {
 				if code, ok := args[0].(string); ok {
 					newMock.categoryFilter = code
 				}
@@ -564,6 +601,23 @@ func (m *productsMockGormDB) Offset(offset int) DBInterface {
 		hasJoin:        m.hasJoin,
 		hasWhere:       m.hasWhere,
 		hasCodeWhere:   m.hasCodeWhere,
+		orderBy:        m.orderBy,
+	}
+	return newMock
+}
+
+func (m *productsMockGormDB) Order(value interface{}) DBInterface {
+	newMock := &productsMockGormDB{
+		MockDB:         m.MockDB,
+		offset:         m.offset,
+		limit:          m.limit,
+		categoryFilter: m.categoryFilter,
+		priceFilter:    m.priceFilter,
+		codeFilter:     m.codeFilter,
+		hasJoin:        m.hasJoin,
+		hasWhere:       m.hasWhere,
+		hasCodeWhere:   m.hasCodeWhere,
+		orderBy:        fmt.Sprintf("%v", value),
 	}
 	return newMock
 }
@@ -579,6 +633,7 @@ func (m *productsMockGormDB) Limit(limit int) DBInterface {
 		hasJoin:        m.hasJoin,
 		hasWhere:       m.hasWhere,
 		hasCodeWhere:   m.hasCodeWhere,
+		orderBy:        m.orderBy,
 	}
 	return newMock
 }

@@ -64,9 +64,14 @@ type CatalogResponse struct {
 	Data CatalogListData `json:"data"`
 }
 
+// ProductDetailData wraps the product detail with product field.
+type ProductDetailData struct {
+	Product ProductDetail `json:"product"`
+}
+
 // ProductDetailResponse wraps the product detail in the response envelope.
 type ProductDetailResponse struct {
-	Data ProductDetail `json:"data"`
+	Data ProductDetailData `json:"data"`
 }
 
 // CatalogHandler handles HTTP requests for the product catalog.
@@ -179,10 +184,13 @@ func (h *CatalogHandler) HandleGetByCode(w http.ResponseWriter, r *http.Request)
 	// Build variant items with price inheritance
 	variantItems := make([]VariantItem, len(product.Variants))
 	for i, v := range product.Variants {
-		variantPrice := v.Price
-		// If variant price is zero, inherit from product price
-		if v.Price.IsZero() {
+		var variantPrice decimal.Decimal
+		// If variant price is NULL (nil), inherit from product price
+		// Explicit 0.00 is a valid price and does NOT inherit
+		if v.Price == nil {
 			variantPrice = product.Price
+		} else {
+			variantPrice = *v.Price
 		}
 		variantItems[i] = VariantItem{
 			Name:  v.Name,
@@ -192,15 +200,17 @@ func (h *CatalogHandler) HandleGetByCode(w http.ResponseWriter, r *http.Request)
 	}
 
 	response := ProductDetailResponse{
-		Data: ProductDetail{
-			Code:  product.Code,
-			Name:  product.Name,
-			Price: product.Price.String(),
-			Category: CategoryItem{
-				Code: product.Category.Code,
-				Name: product.Category.Name,
+		Data: ProductDetailData{
+			Product: ProductDetail{
+				Code:  product.Code,
+				Name:  product.Name,
+				Price: product.Price.String(),
+				Category: CategoryItem{
+					Code: product.Category.Code,
+					Name: product.Category.Name,
+				},
+				Variants: variantItems,
 			},
-			Variants: variantItems,
 		},
 	}
 

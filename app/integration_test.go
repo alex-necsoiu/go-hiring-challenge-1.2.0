@@ -27,6 +27,11 @@ import (
 	"gorm.io/gorm"
 )
 
+// ptrDecimal returns a pointer to a decimal.Decimal for use with nullable Variant.Price
+func ptrDecimal(d decimal.Decimal) *decimal.Decimal {
+	return &d
+}
+
 // IntegrationTestSuite manages database setup and teardown for integration tests
 type IntegrationTestSuite struct {
 	DB                    *gorm.DB
@@ -229,7 +234,7 @@ func createTestProducts(t *testing.T, db *gorm.DB, categories []*models.Category
 			CategoryID: categories[0].ID, // Clothing
 			Variants: []models.Variant{
 				{Name: "Small", SKU: "PROD001-S"},
-				{Name: "Medium", SKU: "PROD001-M", Price: decimal.NewFromFloat(32.99)},
+				{Name: "Medium", SKU: "PROD001-M", Price: ptrDecimal(decimal.NewFromFloat(32.99))},
 			},
 		},
 		{
@@ -447,11 +452,12 @@ func TestIntegration_CatalogEndpoint_ProductDetails(t *testing.T) {
 				var resp map[string]interface{}
 				require.NoError(t, json.Unmarshal([]byte(body), &resp))
 				data := resp["data"].(map[string]interface{})
-				// Data IS the product, not nested under "product"
-				assert.Equal(t, "PROD001", data["code"])
-				assert.Equal(t, "T-Shirt", data["name"])
-				assert.Equal(t, "CLOTHING", data["category"].(map[string]interface{})["code"])
-				variants := data["variants"].([]interface{})
+				// Data contains nested product field
+				product := data["product"].(map[string]interface{})
+				assert.Equal(t, "PROD001", product["code"])
+				assert.Equal(t, "T-Shirt", product["name"])
+				assert.Equal(t, "CLOTHING", product["category"].(map[string]interface{})["code"])
+				variants := product["variants"].([]interface{})
 				assert.True(t, len(variants) > 0)
 			},
 		},
@@ -463,9 +469,10 @@ func TestIntegration_CatalogEndpoint_ProductDetails(t *testing.T) {
 				var resp map[string]interface{}
 				require.NoError(t, json.Unmarshal([]byte(body), &resp))
 				data := resp["data"].(map[string]interface{})
-				// Data IS the product, not nested under "product"
-				assert.Equal(t, "PROD003", data["code"])
-				assert.Equal(t, "Watch", data["name"])
+				// Data contains nested product field
+				product := data["product"].(map[string]interface{})
+				assert.Equal(t, "PROD003", product["code"])
+				assert.Equal(t, "Watch", product["name"])
 			},
 		},
 		{

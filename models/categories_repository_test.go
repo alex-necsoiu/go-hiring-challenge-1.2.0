@@ -269,6 +269,10 @@ func (m *categoriesMockGormDB) Create(value interface{}) DBInterface {
 	return m
 }
 
+func (m *categoriesMockGormDB) Order(value interface{}) DBInterface {
+	return m
+}
+
 func (m *categoriesMockGormDB) GetError() error {
 	return m.lastError
 }

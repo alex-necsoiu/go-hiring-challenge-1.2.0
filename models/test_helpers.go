@@ -13,3 +13,9 @@ func mustDecimal(s string) decimal.Decimal {
 	}
 	return d
 }
+
+// ptrDecimal is a test helper that returns a pointer to a decimal.Decimal.
+// Used for Variant.Price which is nullable (*decimal.Decimal).
+func ptrDecimal(d decimal.Decimal) *decimal.Decimal {
+	return &d
+}

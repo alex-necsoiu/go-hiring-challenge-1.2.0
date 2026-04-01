@@ -15,6 +15,7 @@ type DBInterface interface {
 	Limit(limit int) DBInterface
 	First(dest interface{}) DBInterface
 	Create(value interface{}) DBInterface
+	Order(value interface{}) DBInterface
 	GetError() error
 }
 
@@ -68,6 +69,10 @@ func (a *GormDBAdapter) First(dest interface{}) DBInterface {
 
 func (a *GormDBAdapter) Create(value interface{}) DBInterface {
 	return &GormDBAdapter{db: a.db.Create(value)}
+}
+
+func (a *GormDBAdapter) Order(value interface{}) DBInterface {
+	return &GormDBAdapter{db: a.db.Order(value)}
 }
 
 func (a *GormDBAdapter) GetError() error {

@@ -37,7 +37,7 @@ func TestProductCreation(t *testing.T) {
 						ProductID: 1,
 						Name:      "Size M",
 						SKU:       "SKU-001",
-						Price:     mustDecimal("50.00"),
+						Price:     ptrDecimal(mustDecimal("50.00")),
 					},
 				},
 			},

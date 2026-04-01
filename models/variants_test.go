@@ -25,28 +25,29 @@ func TestVariantCreation(t *testing.T) {
 				ProductID: 10,
 				Name:      "Size Medium",
 				SKU:       "SKU-MED-001",
-				Price:     mustDecimal("29.99"),
+				Price:     ptrDecimal(mustDecimal("29.99")),
 			},
 			validate: func(t *testing.T, v Variant) {
 				assert.Equal(t, uint(1), v.ID)
 				assert.Equal(t, uint(10), v.ProductID)
 				assert.Equal(t, "Size Medium", v.Name)
 				assert.Equal(t, "SKU-MED-001", v.SKU)
+				assert.NotNil(t, v.Price)
 				assert.True(t, v.Price.Equal(mustDecimal("29.99")))
 			},
 		},
 		{
-			name: "variant with zero price (null)",
+			name: "variant with null price (inherits from product)",
 			variant: Variant{
 				ID:        2,
 				ProductID: 10,
 				Name:      "Size Large",
 				SKU:       "SKU-LRG-001",
-				Price:     decimal.Zero,
+				Price:     nil,
 			},
 			validate: func(t *testing.T, v Variant) {
 				assert.Equal(t, uint(2), v.ID)
-				assert.True(t, v.Price.IsZero())
+				assert.Nil(t, v.Price)
 			},
 		},
 		{
@@ -61,7 +62,7 @@ func TestVariantCreation(t *testing.T) {
 				assert.Equal(t, uint(5), v.ProductID)
 				assert.Equal(t, "Default", v.Name)
 				assert.Equal(t, "DEF-001", v.SKU)
-				assert.True(t, v.Price.IsZero())
+				assert.Nil(t, v.Price)
 			},
 		},
 	}
@@ -79,19 +80,19 @@ func TestVariantFieldTypes(t *testing.T) {
 		ProductID: 100,
 		Name:      "Type Check",
 		SKU:       "TYPE-001",
-		Price:     mustDecimal("123.45"),
+		Price:     ptrDecimal(mustDecimal("123.45")),
 	}
 
 	// Verify field types through assignments
 	assertUint := func(u uint) bool { return true }
 	assertString := func(s string) bool { return true }
-	assertDecimal := func(d decimal.Decimal) bool { return true }
+	assertDecimalPtr := func(d *decimal.Decimal) bool { return true }
 
 	assert.True(t, assertUint(v.ID))
 	assert.True(t, assertUint(v.ProductID))
 	assert.True(t, assertString(v.Name))
 	assert.True(t, assertString(v.SKU))
-	assert.True(t, assertDecimal(v.Price))
+	assert.True(t, assertDecimalPtr(v.Price))
 }
 
 func TestVariantZeroValue(t *testing.T) {
@@ -101,38 +102,38 @@ func TestVariantZeroValue(t *testing.T) {
 	assert.Equal(t, uint(0), v.ProductID)
 	assert.Equal(t, "", v.Name)
 	assert.Equal(t, "", v.SKU)
-	assert.True(t, v.Price.IsZero())
+	assert.Nil(t, v.Price)
 }
 
 func TestVariantPriceHandling(t *testing.T) {
 	tests := []struct {
 		name      string
-		price     decimal.Decimal
-		isZero    bool
+		price     *decimal.Decimal
+		isNil     bool
 		stringVal string
 	}{
 		{
-			name:      "zero price",
-			price:     decimal.Zero,
-			isZero:    true,
-			stringVal: "0",
+			name:      "null price (inheritance)",
+			price:     nil,
+			isNil:     true,
+			stringVal: "<nil>",
 		},
 		{
-			name:      "positive price",
-			price:     mustDecimal("99.99"),
-			isZero:    false,
+			name:      "explicit positive price",
+			price:     ptrDecimal(mustDecimal("99.99")),
+			isNil:     false,
 			stringVal: "99.99",
 		},
 		{
-			name:      "zero as decimal",
-			price:     mustDecimal("0"),
-			isZero:    true,
+			name:      "explicit zero price",
+			price:     ptrDecimal(decimal.Zero),
+			isNil:     false,
 			stringVal: "0",
 		},
 		{
-			name:      "high precision",
-			price:     mustDecimal("1234.56"),
-			isZero:    false,
+			name:      "high precision price",
+			price:     ptrDecimal(mustDecimal("1234.56")),
+			isNil:     false,
 			stringVal: "1234.56",
 		},
 	}
@@ -140,8 +141,10 @@ func TestVariantPriceHandling(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			v := Variant{Price: tt.price}
-			assert.Equal(t, tt.isZero, v.Price.IsZero())
-			assert.Equal(t, tt.stringVal, v.Price.String())
+			assert.Equal(t, tt.isNil, v.Price == nil)
+			if !tt.isNil {
+				assert.Equal(t, tt.stringVal, v.Price.String())
+			}
 		})
 	}
 }

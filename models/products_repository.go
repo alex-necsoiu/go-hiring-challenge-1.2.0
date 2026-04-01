@@ -42,7 +42,7 @@ func (r *ProductsRepository) GetProducts(filter ProductFilter) ([]Product, int64
 	// Apply filters
 	if filter.CategoryCode != "" {
 		query = query.Joins("JOIN categories ON categories.id = products.category_id").
-			Where("categories.code = ?", filter.CategoryCode)
+			Where("LOWER(categories.code) = LOWER(?)", filter.CategoryCode)
 	}
 	if !filter.MaxPrice.IsZero() {
 		query = query.Where("products.price < ?", filter.MaxPrice)
@@ -53,8 +53,8 @@ func (r *ProductsRepository) GetProducts(filter ProductFilter) ([]Product, int64
 		return nil, 0, err
 	}
 
-	// Apply pagination and preloads
-	if err := query.Offset(filter.Offset).Limit(filter.Limit).
+	// Apply ordering, pagination and preloads
+	if err := query.Order("products.code ASC").Offset(filter.Offset).Limit(filter.Limit).
 		Preload("Category").
 		Preload("Variants").
 		Find(&products).GetError(); err != nil {
