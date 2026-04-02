@@ -16,6 +16,15 @@ import (
 	"github.com/mytheresa/go-hiring-challenge/models"
 )
 
+// @title Go Product Catalog API
+// @version 1.0.0
+// @description Production-grade REST API for product catalog management with categories, variants, and advanced filtering
+// @contact.name Alex Necsoiu
+// @contact.email axel.necsoiu@gmail.com
+// @license.name MIT
+// @host localhost:8000
+// @BasePath /
+
 func main() {
 	// Load environment variables from .env file
 	if err := godotenv.Load(".env"); err != nil {

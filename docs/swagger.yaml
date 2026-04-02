@@ -1,0 +1,270 @@
+basePath: /
+definitions:
+  catalog.CatalogListData:
+    properties:
+      limit:
+        type: integer
+      offset:
+        type: integer
+      products:
+        items:
+          $ref: '#/definitions/catalog.ProductItem'
+        type: array
+      total:
+        type: integer
+    type: object
+  catalog.CatalogResponse:
+    properties:
+      data:
+        $ref: '#/definitions/catalog.CatalogListData'
+    type: object
+  catalog.CategoryItem:
+    properties:
+      code:
+        type: string
+      name:
+        type: string
+    type: object
+  catalog.ProductDetail:
+    properties:
+      category:
+        $ref: '#/definitions/catalog.CategoryItem'
+      code:
+        type: string
+      name:
+        type: string
+      price:
+        type: string
+      variants:
+        items:
+          $ref: '#/definitions/catalog.VariantItem'
+        type: array
+    type: object
+  catalog.ProductDetailData:
+    properties:
+      product:
+        $ref: '#/definitions/catalog.ProductDetail'
+    type: object
+  catalog.ProductDetailResponse:
+    properties:
+      data:
+        $ref: '#/definitions/catalog.ProductDetailData'
+    type: object
+  catalog.ProductItem:
+    properties:
+      category:
+        $ref: '#/definitions/catalog.CategoryItem'
+      code:
+        type: string
+      name:
+        type: string
+      price:
+        type: string
+    type: object
+  catalog.VariantItem:
+    properties:
+      name:
+        type: string
+      price:
+        type: string
+      sku:
+        type: string
+    type: object
+  categories.CategoriesListData:
+    properties:
+      categories:
+        items:
+          $ref: '#/definitions/categories.CategoryItem'
+        type: array
+    type: object
+  categories.CategoriesResponse:
+    properties:
+      data:
+        $ref: '#/definitions/categories.CategoriesListData'
+    type: object
+  categories.CategoryItem:
+    properties:
+      code:
+        type: string
+      name:
+        type: string
+    type: object
+  categories.CategoryRequest:
+    properties:
+      code:
+        example: ELECTRONICS
+        type: string
+      name:
+        example: Electronics & Gadgets
+        type: string
+    type: object
+  categories.CategoryResponse:
+    properties:
+      data:
+        $ref: '#/definitions/categories.CategoryItem'
+    type: object
+host: localhost:8000
+info:
+  contact:
+    email: axel.necsoiu@gmail.com
+    name: Alex Necsoiu
+  description: Production-grade REST API for product catalog management with categories,
+    variants, and advanced filtering
+  license:
+    name: MIT
+  title: Go Product Catalog API
+  version: 1.0.0
+paths:
+  /catalog:
+    get:
+      consumes:
+      - application/json
+      description: Returns a paginated list of all products with support for category
+        filtering and price range searching. Results include pagination metadata (total
+        count, offset, limit).
+      parameters:
+      - default: 0
+        description: 'Pagination offset (default: 0)'
+        in: query
+        name: offset
+        type: integer
+      - default: 10
+        description: 'Number of items to return, max 100 (default: 10)'
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by category code (case-insensitive, e.g., 'clothing')
+        in: query
+        name: category
+        type: string
+      - description: Filter products with price less than this value (e.g., 100.50)
+        in: query
+        name: priceLessThan
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of products with pagination metadata
+          schema:
+            $ref: '#/definitions/catalog.CatalogResponse'
+        "400":
+          description: 'Validation error: invalid offset, limit, or price parameter'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error while fetching products
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List products with pagination and filters
+      tags:
+      - catalog
+  /catalog/{code}:
+    get:
+      consumes:
+      - application/json
+      description: Returns complete product information including all variants and
+        category details. Variant prices inherit from the product price if not explicitly
+        set.
+      parameters:
+      - description: Product code (e.g., 'PROD001')
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product details with variants and category information
+          schema:
+            $ref: '#/definitions/catalog.ProductDetailResponse'
+        "400":
+          description: 'Validation error: missing or invalid product code'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Product not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error while fetching product
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get product details by code
+      tags:
+      - catalog
+  /categories:
+    get:
+      consumes:
+      - application/json
+      description: Returns a complete list of all product categories ordered by code
+        for deterministic results. Categories define the product taxonomy.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of all categories
+          schema:
+            $ref: '#/definitions/categories.CategoriesResponse'
+        "500":
+          description: Internal server error while fetching categories
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List all categories
+      tags:
+      - categories
+    post:
+      consumes:
+      - application/json
+      description: Creates a new product category with validation and uniqueness constraints.
+        Category codes must be alphanumeric (uppercase), hyphens, and underscores.
+      parameters:
+      - description: Category creation request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/categories.CategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Category created successfully
+          schema:
+            $ref: '#/definitions/categories.CategoryResponse'
+        "400":
+          description: 'Validation error: missing required fields or invalid code
+            format'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: 'Conflict: category code already exists'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error while creating category
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new category
+      tags:
+      - categories
+swagger: "2.0"

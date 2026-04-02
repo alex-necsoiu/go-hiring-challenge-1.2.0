@@ -20,6 +20,12 @@ type CategoryRepository interface {
 	CreateCategory(category *models.Category) error
 }
 
+// CategoryRequest represents the request body for creating a category.
+type CategoryRequest struct {
+	Code string `json:"code" example:"ELECTRONICS"`
+	Name string `json:"name" example:"Electronics & Gadgets"`
+}
+
 // CategoryItem represents a category in the response.
 type CategoryItem struct {
 	Code string `json:"code"`
@@ -54,6 +60,14 @@ func NewCategoriesHandler(r CategoryRepository) *CategoriesHandler {
 }
 
 // HandleGet returns all categories.
+// @Summary List all categories
+// @Description Returns a complete list of all product categories ordered by code for deterministic results. Categories define the product taxonomy.
+// @Tags categories
+// @Accept json
+// @Produce json
+// @Success 200 {object} CategoriesResponse "List of all categories"
+// @Failure 500 {object} map[string]string "Internal server error while fetching categories"
+// @Router /categories [get]
 func (h *CategoriesHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 	categories, err := h.repo.GetAllCategories()
 	if err != nil {
@@ -80,6 +94,17 @@ func (h *CategoriesHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleCreate creates a new category.
+// @Summary Create a new category
+// @Description Creates a new product category with validation and uniqueness constraints. Category codes must be alphanumeric (uppercase), hyphens, and underscores.
+// @Tags categories
+// @Accept json
+// @Produce json
+// @Param body body CategoryRequest true "Category creation request"
+// @Success 201 {object} CategoryResponse "Category created successfully"
+// @Failure 400 {object} map[string]string "Validation error: missing required fields or invalid code format"
+// @Failure 409 {object} map[string]string "Conflict: category code already exists"
+// @Failure 500 {object} map[string]string "Internal server error while creating category"
+// @Router /categories [post]
 func (h *CategoriesHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	// Decode request body
 	var req struct {

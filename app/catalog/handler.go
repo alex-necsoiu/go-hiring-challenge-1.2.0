@@ -88,6 +88,19 @@ func NewCatalogHandler(r ProductRepository) *CatalogHandler {
 }
 
 // HandleGet returns a paginated list of products with optional filtering.
+// @Summary List products with pagination and filters
+// @Description Returns a paginated list of all products with support for category filtering and price range searching. Results include pagination metadata (total count, offset, limit).
+// @Tags catalog
+// @Accept json
+// @Produce json
+// @Param offset query integer false "Pagination offset (default: 0)" default(0)
+// @Param limit query integer false "Number of items to return, max 100 (default: 10)" default(10)
+// @Param category query string false "Filter by category code (case-insensitive, e.g., 'clothing')"
+// @Param priceLessThan query number false "Filter products with price less than this value (e.g., 100.50)"
+// @Success 200 {object} CatalogResponse "List of products with pagination metadata"
+// @Failure 400 {object} map[string]string "Validation error: invalid offset, limit, or price parameter"
+// @Failure 500 {object} map[string]string "Internal server error while fetching products"
+// @Router /catalog [get]
 func (h *CatalogHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 	// Parse and validate pagination parameters
 	offset, err := parseIntParam(r, "offset", 0)
@@ -165,6 +178,17 @@ func (h *CatalogHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleGetByCode returns the details of a single product by its code.
+// @Summary Get product details by code
+// @Description Returns complete product information including all variants and category details. Variant prices inherit from the product price if not explicitly set.
+// @Tags catalog
+// @Accept json
+// @Produce json
+// @Param code path string true "Product code (e.g., 'PROD001')"
+// @Success 200 {object} ProductDetailResponse "Product details with variants and category information"
+// @Failure 400 {object} map[string]string "Validation error: missing or invalid product code"
+// @Failure 404 {object} map[string]string "Product not found"
+// @Failure 500 {object} map[string]string "Internal server error while fetching product"
+// @Router /catalog/{code} [get]
 func (h *CatalogHandler) HandleGetByCode(w http.ResponseWriter, r *http.Request) {
 	code := r.PathValue("code")
 	if code == "" {
