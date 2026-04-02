@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -172,7 +173,7 @@ func (h *CatalogHandler) HandleGetByCode(w http.ResponseWriter, r *http.Request)
 	}
 
 	product, err := h.repo.GetProductByCode(code)
-	if err == gorm.ErrRecordNotFound {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		api.ErrorResponse(w, http.StatusNotFound, "product not found")
 		return
 	}
