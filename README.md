@@ -197,6 +197,27 @@ curl http://localhost:8000/catalog
 
 ## 📡 API Reference
 
+### 🔍 Interactive API Documentation (Swagger/OpenAPI)
+
+The API documentation is available in multiple formats using Swagger/OpenAPI 3.0:
+
+**Generate documentation:**
+```bash
+make swagger
+```
+
+**Generated files:**
+- `docs/swagger.json` - OpenAPI 3.0 specification (JSON)
+- `docs/swagger.yaml` - OpenAPI 3.0 specification (YAML)  
+- `docs/docs.go` - Embedded Go code for Swagger integration
+
+**What's documented:**
+- All endpoints with full descriptions
+- Request parameters (path, query, body) with validation rules
+- Response schemas with real examples
+- Error codes and status descriptions
+- Request/response type definitions
+
 ### Endpoints Summary
 
 | Method | Endpoint | Description |
@@ -446,7 +467,7 @@ make test-coverage
 | `make test-coverage` | Generate HTML coverage report |
 | `make fmt` | Format code |
 | `make vet` | Run go vet static analysis |
-| `make docker-build` | Build Docker image |
+| `make swagger` | Generate Swagger/OpenAPI documentation |
 | `make clean` | Remove build artifacts |
 
 ### Code Formatting
@@ -468,38 +489,48 @@ make vet
 
 ### Services
 
+The project uses Docker Compose to manage development services:
+
 | Service | Image | Port | Purpose |
 |---------|-------|------|---------|
-| **api** | Built from Dockerfile | 8000 | REST API |
-| **postgres** | `postgres:15-alpine` | 5432 | Primary database |
-
-### Multi-Stage Dockerfile
-
-The Dockerfile uses a two-stage build for efficiency:
-
-**Stage 1: Build**
-- Base: `golang:1.21-alpine`
-- Installs dependencies
-- Compiles binary with version info
-- Result: ~18MB binary
-
-**Stage 2: Runtime**
-- Base: `alpine:3.18`
-- Copies optimized binary
-- Minimal attack surface
-- Final image: ~20MB
+| **postgres** | `postgres:17.5` | 5432 | Primary database |
 
 ### Running Services
 
 ```bash
-# Start all services
-make dev-up
+# Start PostgreSQL service
+make docker-up
 
 # View logs
-make logs
+make docker-logs
 
 # Stop services
-make dev-down
+make docker-down
+
+# Reset database (remove volume)
+make db-reset
+```
+
+### Environment Setup
+
+The API runs locally during development. For production deployment, create a Dockerfile with:
+- Base: `golang:1.21-alpine` (build stage)
+- Base: `alpine:3.18` (runtime stage)
+- Includes swaggo pre-installed for documentation generation
+
+Example:
+```dockerfile
+# Build stage
+FROM golang:1.21-alpine as builder
+RUN go install github.com/swaggo/swag/cmd/swag@latest
+WORKDIR /app
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o server cmd/server/main.go
+
+# Runtime stage
+FROM alpine:3.18
+COPY --from=builder /app/server /app/docs /app/
+CMD ["/server"]
 ```
 
 ---

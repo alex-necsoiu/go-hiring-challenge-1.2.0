@@ -56,6 +56,7 @@ TEST_COVERAGE_HTML := coverage.html
 	run run-seed \
 	fmt fmt-check \
 	vet lint \
+	swagger \
 	test test-unit test-integration test-all test-race test-coverage \
 	docker-up docker-down docker-logs \
 	db-up db-down db-reset \
@@ -85,6 +86,10 @@ help:
 	@echo "│ make fmt-check          Check if formatting is needed (CI safe)    │"
 	@echo "│ make vet                Run go vet (static analysis)               │"
 	@echo "│ make lint               Run golangci-lint (if installed)           │"
+	@echo "└────────────────────────────────────────────────────────────────────┘"
+	@echo ""
+	@echo "┌─ Documentation ────────────────────────────────────────────────────┐"
+	@echo "│ make swagger            Generate Swagger/OpenAPI documentation     │"
 	@echo "└────────────────────────────────────────────────────────────────────┘"
 	@echo ""
 	@echo "┌─ Testing ──────────────────────────────────────────────────────────┐"
@@ -148,6 +153,22 @@ lint:
 		exit 1; \
 	}
 	@golangci-lint run ./...
+
+# =============================================================================
+# 📚 DOCUMENTATION — Generate API documentation
+# =============================================================================
+
+swagger:
+	@echo "📚 Generating Swagger/OpenAPI documentation..."
+	@command -v swag >/dev/null 2>&1 || { \
+		echo "⚠️  swag not found. Installing..."; \
+		$(GO) install github.com/swaggo/swag/cmd/swag@latest; \
+	}
+	@swag init -g cmd/server/main.go
+	@echo "✅ Documentation generated!"
+	@echo "   docs/swagger.json - JSON spec"
+	@echo "   docs/swagger.yaml - YAML spec"
+	@echo "   docs/docs.go - Go embedded code"
 	@echo "✅ No lint issues found!"
 
 # =============================================================================
