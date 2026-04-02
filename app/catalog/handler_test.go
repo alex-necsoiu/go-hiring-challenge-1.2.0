@@ -202,6 +202,21 @@ func TestHandleGet(t *testing.T) {
 			},
 		},
 		{
+			name:        "invalid priceLessThan (not numeric) - returns 400",
+			queryParams: "?offset=0&limit=10&priceLessThan=invalid",
+			mockFunc: func() ([]models.Product, int64, error) {
+				return nil, 0, nil
+			},
+			expectedStatus: http.StatusBadRequest,
+			checkResponse: func(t *testing.T, body string) {
+				var resp map[string]string
+				err := json.Unmarshal([]byte(body), &resp)
+				assert.NoError(t, err)
+				assert.Contains(t, resp["error"], "priceLessThan")
+			},
+			checkFilter: nil,
+		},
+		{
 			name:        "priceLessThan filter passed to repository",
 			queryParams: "?offset=0&limit=10&priceLessThan=15.00",
 			mockFunc: func() ([]models.Product, int64, error) {
@@ -253,6 +268,20 @@ func TestHandleGetByCode(t *testing.T) {
 		expectedStatus int
 		checkResponse  func(t *testing.T, body string)
 	}{
+		{
+			name: "empty code - returns 400",
+			code: "",
+			mockFunc: func(code string) (*models.Product, error) {
+				return nil, nil
+			},
+			expectedStatus: http.StatusBadRequest,
+			checkResponse: func(t *testing.T, body string) {
+				var resp map[string]string
+				err := json.Unmarshal([]byte(body), &resp)
+				assert.NoError(t, err)
+				assert.Contains(t, resp["error"], "code")
+			},
+		},
 		{
 			name: "happy path - returns 200 with product detail",
 			code: "PROD001",
