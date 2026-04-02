@@ -183,20 +183,6 @@ func runMigrations(t *testing.T, db *gorm.DB) {
 	}
 }
 
-// truncateTables removes all data from tables while keeping schema
-func truncateTables(t *testing.T, db *gorm.DB) {
-	// Drop all tables to ensure clean state (in reverse dependency order)
-	tables := []string{"product_variants", "products", "categories"}
-	for _, table := range tables {
-		if err := db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s CASCADE", table)).Error; err != nil {
-			t.Logf("Warning: dropping table %s failed: %v", table, err)
-		}
-	}
-	
-	// Recreate schema by running migrations
-	// This is done implicitly by runMigrations on next test run
-}
-
 // cleanDatabase drops all tables to ensure a clean state at the start of each test
 func cleanDatabase(t *testing.T, db *gorm.DB) {
 	tables := []string{"product_variants", "products", "categories"}
@@ -519,10 +505,12 @@ func TestIntegration_CategoriesEndpoint_ListCategories(t *testing.T) {
 	data := result["data"].(map[string]interface{})
 	categories := data["categories"].([]interface{})
 
+	// Verify count
 	assert.Equal(t, 3, len(categories))
-	assert.Equal(t, "CLOTHING", categories[0].(map[string]interface{})["code"])
-	assert.Equal(t, "SHOES", categories[1].(map[string]interface{})["code"])
-	assert.Equal(t, "ACCESSORIES", categories[2].(map[string]interface{})["code"])
+	// Verify deterministic order (ORDER BY code ASC as per migration 008)
+	assert.Equal(t, "ACCESSORIES", categories[0].(map[string]interface{})["code"])
+	assert.Equal(t, "CLOTHING", categories[1].(map[string]interface{})["code"])
+	assert.Equal(t, "SHOES", categories[2].(map[string]interface{})["code"])
 }
 
 // TestIntegration_CategoriesEndpoint_CreateCategory tests POST /categories

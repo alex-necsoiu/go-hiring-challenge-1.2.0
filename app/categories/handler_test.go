@@ -16,6 +16,7 @@ import (
 type mockCategoryRepository struct {
 	getAllCategoriesFunc func() ([]models.Category, error)
 	createCategoryFunc   func(category *models.Category) error
+	capturedCategory     *models.Category // Captures what was passed to CreateCategory
 }
 
 func (m *mockCategoryRepository) GetAllCategories() ([]models.Category, error) {
@@ -23,6 +24,7 @@ func (m *mockCategoryRepository) GetAllCategories() ([]models.Category, error) {
 }
 
 func (m *mockCategoryRepository) CreateCategory(category *models.Category) error {
+	m.capturedCategory = category
 	return m.createCategoryFunc(category)
 }
 
@@ -119,7 +121,7 @@ func TestHandleCreate(t *testing.T) {
 		mockFunc          func(category *models.Category) error
 		expectedStatus    int
 		checkResponse     func(t *testing.T, body string)
-		checkCategoryData func(t *testing.T) // for checking what was passed to mock
+		checkCategoryData func(t *testing.T, mock *mockCategoryRepository) // for checking what was passed to mock
 	}{
 		{
 			name: "successful creation - returns 201",
@@ -136,10 +138,15 @@ func TestHandleCreate(t *testing.T) {
 				var resp CategoryResponse
 				err := json.Unmarshal([]byte(body), &resp)
 				assert.NoError(t, err)
-				assert.Equal(t, "new-category", resp.Data.Code)
+				assert.Equal(t, "NEW-CATEGORY", resp.Data.Code)
 				assert.Equal(t, "New Category", resp.Data.Name)
 			},
-			checkCategoryData: func(t *testing.T) {},
+			checkCategoryData: func(t *testing.T, mock *mockCategoryRepository) {
+				// Verify the category was passed to the repository with correct normalized code and name
+				assert.NotNil(t, mock.capturedCategory, "Category should have been passed to repository")
+				assert.Equal(t, "NEW-CATEGORY", mock.capturedCategory.Code, "Code should be normalized to uppercase")
+				assert.Equal(t, "New Category", mock.capturedCategory.Name, "Name should be trimmed but unchanged")
+			},
 		},
 		{
 			name: "missing code - returns 400",
@@ -154,7 +161,10 @@ func TestHandleCreate(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Contains(t, resp["error"], "code")
 			},
-			checkCategoryData: func(t *testing.T) {},
+			checkCategoryData: func(t *testing.T, mock *mockCategoryRepository) {
+				// Validation failure should prevent repository call
+				assert.Nil(t, mock.capturedCategory, "Repository should not be called when code is missing")
+			},
 		},
 		{
 			name: "missing name - returns 400",
@@ -169,7 +179,10 @@ func TestHandleCreate(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Contains(t, resp["error"], "name")
 			},
-			checkCategoryData: func(t *testing.T) {},
+			checkCategoryData: func(t *testing.T, mock *mockCategoryRepository) {
+				// Validation failure should prevent repository call
+				assert.Nil(t, mock.capturedCategory, "Repository should not be called when name is missing")
+			},
 		},
 		{
 			name:           "invalid JSON body - returns 400",
@@ -182,7 +195,10 @@ func TestHandleCreate(t *testing.T) {
 				assert.NoError(t, err)
 				assert.NotEmpty(t, resp["error"])
 			},
-			checkCategoryData: func(t *testing.T) {},
+			checkCategoryData: func(t *testing.T, mock *mockCategoryRepository) {
+				// Parse failure should prevent repository call
+				assert.Nil(t, mock.capturedCategory, "Repository should not be called when JSON is invalid")
+			},
 		},
 		{
 			name: "duplicate code (unique constraint) - returns 409",
@@ -201,7 +217,12 @@ func TestHandleCreate(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Contains(t, resp["error"], "already exists")
 			},
-			checkCategoryData: func(t *testing.T) {},
+			checkCategoryData: func(t *testing.T, mock *mockCategoryRepository) {
+				// Verify the category was passed despite the constraint violation
+				assert.NotNil(t, mock.capturedCategory, "Category should have been passed to repository")
+				assert.Equal(t, "CLOTHING", mock.capturedCategory.Code, "Code should be normalized to uppercase")
+				assert.Equal(t, "Clothing Duplicate", mock.capturedCategory.Name, "Name should be trimmed but unchanged")
+			},
 		},
 		{
 			name: "repository error - returns 500",
@@ -219,7 +240,12 @@ func TestHandleCreate(t *testing.T) {
 				assert.NoError(t, err)
 				assert.NotEmpty(t, resp["error"])
 			},
-			checkCategoryData: func(t *testing.T) {},
+			checkCategoryData: func(t *testing.T, mock *mockCategoryRepository) {
+				// Verify the category was passed to the repository before the error occurred
+				assert.NotNil(t, mock.capturedCategory, "Category should have been passed to repository")
+				assert.Equal(t, "NEW-CATEGORY", mock.capturedCategory.Code, "Code should be normalized to uppercase")
+				assert.Equal(t, "New Category", mock.capturedCategory.Name, "Name should be trimmed but unchanged")
+			},
 		},
 	}
 
@@ -244,7 +270,7 @@ func TestHandleCreate(t *testing.T) {
 
 			assert.Equal(t, tt.expectedStatus, recorder.Code)
 			tt.checkResponse(t, recorder.Body.String())
-			tt.checkCategoryData(t)
+			tt.checkCategoryData(t, mock)
 		})
 	}
 }

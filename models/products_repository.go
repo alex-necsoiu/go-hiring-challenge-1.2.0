@@ -1,9 +1,5 @@
 package models
 
-import (
-	"gorm.io/gorm"
-)
-
 // ProductsRepository handles database operations for products.
 type ProductsRepository struct {
 	db DBInterface
@@ -14,16 +10,6 @@ func NewProductsRepository(db DBInterface) *ProductsRepository {
 	return &ProductsRepository{
 		db: db,
 	}
-}
-
-// GetAllProducts returns all products with their variants from the database.
-// Returns a slice of all Product records and an error if the query fails.
-func (r *ProductsRepository) GetAllProducts() ([]Product, error) {
-	var products []Product
-	if err := r.db.Preload("Variants").Find(&products).GetError(); err != nil {
-		return nil, err
-	}
-	return products, nil
 }
 
 // GetProducts returns a paginated list of products with optional filtering.
@@ -66,16 +52,13 @@ func (r *ProductsRepository) GetProducts(filter ProductFilter) ([]Product, int64
 
 // GetProductByCode retrieves a single product by its code.
 // Returns the product with its Category and Variants preloaded, and an error if not found or query fails.
-// Returns nil and gorm.ErrRecordNotFound if the product does not exist.
+// When the product is not found, the error will be gorm.ErrRecordNotFound.
 func (r *ProductsRepository) GetProductByCode(code string) (*Product, error) {
 	var product Product
 	if err := r.db.Where("code = ?", code).
 		Preload("Category").
 		Preload("Variants").
 		First(&product).GetError(); err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, err
-		}
 		return nil, err
 	}
 	return &product, nil

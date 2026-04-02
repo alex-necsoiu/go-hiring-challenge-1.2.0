@@ -51,6 +51,7 @@ func main() {
 		content, err := os.ReadFile(path)
 		if err != nil {
 			log.Printf("reading file %s failed: %v", file.Name(), err)
+			continue
 		}
 
 		sql := string(content)

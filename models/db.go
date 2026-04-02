@@ -4,6 +4,12 @@ import "gorm.io/gorm"
 
 // DBInterface defines the minimal interface for database operations needed by repositories.
 // This interface allows for mocking and testing without requiring actual gorm.DB instances.
+//
+// Design rationale:
+// - Defined in models/ rather than handler packages because it's GORM-specific infrastructure
+//   that needs to be shared between multiple repositories (ProductsRepository, CategoriesRepository)
+// - Enables unit testing all repositories with in-memory mocks (no Docker required)
+// - Follows Adapter pattern: handlers depend on DBInterface, not on GORM directly
 type DBInterface interface {
 	Preload(column string, conditions ...interface{}) DBInterface
 	Find(dest interface{}) DBInterface
@@ -22,11 +28,21 @@ type DBInterface interface {
 // GormDBAdapter wraps a *gorm.DB and implements DBInterface.
 // The adapter methods are thin pass-through wrappers with no business logic.
 // They are covered through integration tests via the repositories that use them.
+//
+// Architecture note on allocation pattern:
+// - Each method returns a new GormDBAdapter wrapping the result of the GORM method call
+// - This is necessary because GORM methods return new *gorm.DB instances (builder pattern)
+// - The returned DBInterface maintains query chain immutability from the caller's perspective
+// - Allocation overhead is acceptable for this application (not a high-throughput financial system)
+// - If profiling shows this bottleneck (rare), sync.Pool could optimize allocations without
+//   changing the interface contract
 type GormDBAdapter struct {
 	db *gorm.DB
 }
 
 // NewGormDBAdapter creates a new adapter for *gorm.DB
+// Returns DBInterface (not *GormDBAdapter) to enforce interface discipline:
+// callers depend on the interface contract, not the concrete implementation
 func NewGormDBAdapter(db *gorm.DB) DBInterface {
 	return &GormDBAdapter{db: db}
 }

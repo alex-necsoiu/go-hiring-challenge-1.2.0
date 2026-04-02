@@ -3,6 +3,7 @@ package categories
 import (
 	"encoding/json"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/mytheresa/go-hiring-challenge/app/api"
@@ -102,10 +103,17 @@ func (h *CategoriesHandler) HandleCreate(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Normalize code to uppercase and validate format
+	normalizedCode := strings.ToUpper(strings.TrimSpace(req.Code))
+	if !regexp.MustCompile(`^[A-Z0-9_-]+$`).MatchString(normalizedCode) {
+		api.ErrorResponse(w, http.StatusBadRequest, "code must contain only letters, numbers, hyphens, and underscores")
+		return
+	}
+
 	// Create category
 	category := &models.Category{
-		Code: req.Code,
-		Name: req.Name,
+		Code: normalizedCode,
+		Name: strings.TrimSpace(req.Name),
 	}
 
 	if err := h.repo.CreateCategory(category); err != nil {

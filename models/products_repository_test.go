@@ -1,8 +1,8 @@
 package models
 
 import (
-	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/shopspring/decimal"
@@ -39,85 +39,6 @@ func TestNewProductsRepository(t *testing.T) {
 
 	assert.NotNil(t, repo)
 	assert.NotNil(t, repo.db)
-}
-
-func TestProductsRepositoryGetAllProducts(t *testing.T) {
-	tests := []struct {
-		name      string
-		products  []Product
-		setup     func(*MockDB)
-		expectErr bool
-		validate  func(t *testing.T, products []Product)
-	}{
-		{
-			name: "returns all products with variants",
-			products: []Product{
-				{
-					ID:   1,
-					Code: "PROD001",
-					Name: "Product 1",
-					Price: mustDecimal("10.00"),
-					Variants: []Variant{
-						{ID: 1, ProductID: 1, Name: "Var1"},
-					},
-				},
-				{
-					ID:   2,
-					Code: "PROD002",
-					Name: "Product 2",
-					Price: mustDecimal("20.00"),
-				},
-			},
-			setup:     func(m *MockDB) {},
-			expectErr: false,
-			validate: func(t *testing.T, products []Product) {
-				assert.Len(t, products, 2)
-				assert.Equal(t, "PROD001", products[0].Code)
-				assert.Equal(t, "PROD002", products[1].Code)
-				assert.Len(t, products[0].Variants, 1)
-			},
-		},
-		{
-			name:     "returns empty slice when no products",
-			products: []Product{},
-			setup:    func(m *MockDB) {},
-			validate: func(t *testing.T, products []Product) {
-				assert.Len(t, products, 0)
-			},
-		},
-		{
-			name: "handles database error",
-			setup: func(m *MockDB) {
-				m.shouldFail = true
-				m.failError = errors.New("database error")
-			},
-			expectErr: true,
-			validate: func(t *testing.T, products []Product) {
-				assert.Nil(t, products)
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mockDB := NewMockDB(tt.products, []Category{})
-			tt.setup(mockDB)
-
-			repo := &ProductsRepository{
-				db: &productsMockGormDB{MockDB: mockDB},
-			}
-
-			products, err := repo.GetAllProducts()
-
-			if tt.expectErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-			}
-
-			tt.validate(t, products)
-		})
-	}
 }
 
 func TestProductsRepositoryGetProducts(t *testing.T) {
@@ -211,7 +132,8 @@ func TestProductsRepositoryGetProducts(t *testing.T) {
 			},
 			validate: func(t *testing.T, products []Product, total int64, err error) {
 				assert.NoError(t, err)
-				assert.True(t, total >= 0)
+				// Only CLOTHING001 (25.00) matches both clothing category AND price < 40
+				assert.Equal(t, int64(1), total)
 			},
 		},
 	}
@@ -477,22 +399,10 @@ func (m *productsMockGormDB) filterProducts() []Product {
 	return results
 }
 
-// equalsIgnoreCase performs case-insensitive string comparison
+// equalsIgnoreCase performs case-insensitive string comparison using strings.EqualFold.
+// This correctly handles Unicode characters and follows Go standard library practices.
 func equalsIgnoreCase(a, b string) bool {
-	// Simple ASCII lowercase comparison (sufficient for category codes)
-	for i := 0; i < len(a) && i < len(b); i++ {
-		aChar, bChar := a[i], b[i]
-		if aChar >= 'A' && aChar <= 'Z' {
-			aChar = aChar + 32 // Convert to lowercase
-		}
-		if bChar >= 'A' && bChar <= 'Z' {
-			bChar = bChar + 32 // Convert to lowercase
-		}
-		if aChar != bChar {
-			return false
-		}
-	}
-	return len(a) == len(b)
+	return strings.EqualFold(a, b)
 }
 
 func (m *productsMockGormDB) Preload(column string, conditions ...interface{}) DBInterface {
